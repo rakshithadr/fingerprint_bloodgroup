@@ -1,0 +1,764 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>BloodPrint — Fingerprint Blood Group Predictor</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:         #0a0b0f;
+      --bg2:        #111218;
+      --bg3:        #191b24;
+      --border:     rgba(255,255,255,0.07);
+      --red:        #e63946;
+      --red-dim:    #8b1d24;
+      --red-glow:   rgba(230,57,70,0.25);
+      --teal:       #06d6a0;
+      --teal-dim:   rgba(6,214,160,0.15);
+      --gold:       #ffd166;
+      --text:       #eef0f6;
+      --muted:      #6b7280;
+      --card-bg:    rgba(255,255,255,0.03);
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      font-family: 'DM Sans', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* ── Background ─────────────────────────────────────────────── */
+    .bg-orbs {
+      position: fixed; inset: 0; z-index: 0; pointer-events: none;
+      overflow: hidden;
+    }
+    .orb {
+      position: absolute; border-radius: 50%; filter: blur(120px); opacity: 0.18;
+    }
+    .orb-1 { width: 600px; height: 600px; background: var(--red);  top: -200px; left: -200px; animation: drift1 18s ease-in-out infinite; }
+    .orb-2 { width: 500px; height: 500px; background: var(--teal); bottom: -150px; right: -150px; animation: drift2 22s ease-in-out infinite; }
+    .orb-3 { width: 350px; height: 350px; background: var(--gold); top: 40%; left: 50%; animation: drift3 26s ease-in-out infinite; }
+
+    @keyframes drift1 { 0%,100%{transform:translate(0,0)} 50%{transform:translate(80px,60px)} }
+    @keyframes drift2 { 0%,100%{transform:translate(0,0)} 50%{transform:translate(-60px,-80px)} }
+    @keyframes drift3 { 0%,100%{transform:translate(-50%,-50%) scale(1)} 50%{transform:translate(-50%,-50%) scale(1.2)} }
+
+    /* ── Layout ─────────────────────────────────────────────────── */
+    .container { position: relative; z-index: 1; max-width: 1100px; margin: 0 auto; padding: 0 24px; }
+
+    /* ── Nav ────────────────────────────────────────────────────── */
+    nav {
+      position: sticky; top: 0; z-index: 100;
+      background: rgba(10,11,15,0.75); backdrop-filter: blur(20px);
+      border-bottom: 1px solid var(--border);
+    }
+    .nav-inner {
+      display: flex; align-items: center; justify-content: space-between;
+      height: 64px;
+    }
+    .logo {
+      display: flex; align-items: center; gap: 10px;
+      font-family: 'DM Serif Display', serif;
+      font-size: 1.4rem; letter-spacing: -0.02em; color: var(--text);
+    }
+    .logo-dot {
+      width: 10px; height: 10px; background: var(--red); border-radius: 50%;
+      box-shadow: 0 0 12px var(--red), 0 0 30px var(--red-glow);
+      animation: pulse 2s ease-in-out infinite;
+    }
+    @keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:0.7;transform:scale(0.85)} }
+
+    .nav-badge {
+      font-size: 0.72rem; font-weight: 600; letter-spacing: 0.1em;
+      text-transform: uppercase; color: var(--teal);
+      background: var(--teal-dim); border: 1px solid rgba(6,214,160,0.25);
+      padding: 4px 10px; border-radius: 20px;
+    }
+
+    /* ── Hero ───────────────────────────────────────────────────── */
+    .hero {
+      padding: 80px 0 60px;
+      text-align: center;
+    }
+    .hero-tag {
+      display: inline-flex; align-items: center; gap: 8px;
+      background: rgba(230,57,70,0.08); border: 1px solid rgba(230,57,70,0.2);
+      border-radius: 30px; padding: 6px 16px; margin-bottom: 28px;
+      font-size: 0.78rem; font-weight: 600; letter-spacing: 0.1em;
+      text-transform: uppercase; color: var(--red);
+    }
+    .hero h1 {
+      font-family: 'DM Serif Display', serif;
+      font-size: clamp(2.4rem, 6vw, 4.2rem);
+      line-height: 1.05; letter-spacing: -0.03em;
+      margin-bottom: 20px;
+    }
+    .hero h1 em { font-style: italic; color: var(--red); }
+    .hero p {
+      font-size: 1.1rem; color: var(--muted); max-width: 520px;
+      margin: 0 auto 16px; line-height: 1.7;
+    }
+
+    /* ── Main Card ──────────────────────────────────────────────── */
+    .main-card {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: 24px;
+      padding: 40px;
+      margin-bottom: 40px;
+      position: relative;
+      overflow: hidden;
+    }
+    .main-card::before {
+      content: '';
+      position: absolute; top: 0; left: 0; right: 0; height: 1px;
+      background: linear-gradient(90deg, transparent, var(--red), var(--teal), transparent);
+      opacity: 0.6;
+    }
+
+    /* ── Tabs ───────────────────────────────────────────────────── */
+    .tabs {
+      display: flex; gap: 8px; margin-bottom: 32px;
+      background: var(--bg3); border-radius: 14px; padding: 6px;
+    }
+    .tab-btn {
+      flex: 1; padding: 10px 20px; border: none; border-radius: 10px;
+      font-family: 'DM Sans', sans-serif; font-size: 0.9rem; font-weight: 500;
+      cursor: pointer; transition: all 0.25s ease;
+      background: transparent; color: var(--muted);
+      display: flex; align-items: center; justify-content: center; gap: 8px;
+    }
+    .tab-btn.active {
+      background: var(--red); color: white;
+      box-shadow: 0 4px 20px var(--red-glow);
+    }
+    .tab-btn:not(.active):hover { background: var(--border); color: var(--text); }
+
+    /* ── Upload Zone ────────────────────────────────────────────── */
+    .upload-zone {
+      border: 2px dashed rgba(255,255,255,0.12);
+      border-radius: 16px; padding: 50px 30px;
+      text-align: center; cursor: pointer;
+      transition: all 0.3s ease; position: relative;
+      background: var(--card-bg);
+    }
+    .upload-zone:hover, .upload-zone.drag-over {
+      border-color: var(--red);
+      background: rgba(230,57,70,0.04);
+      box-shadow: inset 0 0 40px rgba(230,57,70,0.04);
+    }
+    .upload-zone input[type="file"] {
+      position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%;
+    }
+    .upload-icon { font-size: 3rem; margin-bottom: 16px; display: block; }
+    .upload-zone h3 { font-size: 1.1rem; font-weight: 600; margin-bottom: 8px; }
+    .upload-zone p { color: var(--muted); font-size: 0.88rem; }
+    .upload-zone .formats {
+      display: flex; gap: 6px; justify-content: center; flex-wrap: wrap; margin-top: 16px;
+    }
+    .format-tag {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.72rem; padding: 3px 8px;
+      background: var(--bg3); border: 1px solid var(--border);
+      border-radius: 6px; color: var(--muted);
+    }
+
+    /* ── Scanner ────────────────────────────────────────────────── */
+    .scanner-panel { text-align: center; padding: 30px; }
+    .camera-container {
+      position: relative; width: 100%; max-width: 400px;
+      margin: 0 auto 20px; border-radius: 16px; overflow: hidden;
+      background: #000; aspect-ratio: 4/3;
+      border: 1px solid var(--border);
+    }
+    #videoEl {
+      width: 100%; height: 100%; object-fit: cover; display: block;
+    }
+    .scan-overlay {
+      position: absolute; inset: 0; pointer-events: none;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .scan-frame {
+      width: 60%; height: 70%;
+      border: 2px solid var(--red); border-radius: 8px;
+      box-shadow: 0 0 0 9999px rgba(0,0,0,0.45);
+      position: relative;
+    }
+    .scan-line {
+      position: absolute; left: 0; right: 0; height: 2px;
+      background: linear-gradient(90deg, transparent, var(--red), transparent);
+      animation: scanLine 2s ease-in-out infinite;
+    }
+    @keyframes scanLine {
+      0%   { top: 0;    opacity: 1; }
+      100% { top: 100%; opacity: 0.5; }
+    }
+
+    .btn {
+      display: inline-flex; align-items: center; gap: 8px;
+      padding: 12px 28px; border-radius: 12px; border: none;
+      font-family: 'DM Sans', sans-serif; font-size: 0.95rem; font-weight: 600;
+      cursor: pointer; transition: all 0.25s ease; text-decoration: none;
+    }
+    .btn-red {
+      background: var(--red); color: white;
+      box-shadow: 0 4px 20px var(--red-glow);
+    }
+    .btn-red:hover { transform: translateY(-2px); box-shadow: 0 8px 30px var(--red-glow); }
+    .btn-ghost {
+      background: var(--bg3); color: var(--text);
+      border: 1px solid var(--border);
+    }
+    .btn-ghost:hover { border-color: var(--red); color: var(--red); }
+
+    .btn-row { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; margin-top: 16px; }
+
+    /* ── Preview ────────────────────────────────────────────────── */
+    #previewSection { margin-top: 24px; display: none; }
+    .preview-wrap {
+      display: flex; align-items: center; gap: 20px;
+      background: var(--bg3); border-radius: 16px; padding: 20px;
+      border: 1px solid var(--border);
+    }
+    #previewImg {
+      width: 120px; height: 120px; object-fit: cover;
+      border-radius: 10px; border: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+    .preview-meta { flex: 1; }
+    .preview-meta .fname {
+      font-weight: 600; margin-bottom: 4px; word-break: break-all;
+    }
+    .preview-meta .fmeta { font-size: 0.85rem; color: var(--muted); }
+
+    /* ── Predict Button ─────────────────────────────────────────── */
+    .predict-row { margin-top: 28px; display: flex; justify-content: center; }
+    #predictBtn {
+      padding: 16px 48px; font-size: 1rem; border-radius: 14px;
+      background: linear-gradient(135deg, var(--red), #c1121f);
+      box-shadow: 0 6px 30px var(--red-glow);
+    }
+    #predictBtn:hover:not(:disabled) { transform: translateY(-3px); box-shadow: 0 12px 40px var(--red-glow); }
+    #predictBtn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+    /* ── Loader ─────────────────────────────────────────────────── */
+    .loader { display: none; text-align: center; padding: 40px; }
+    .dna-loader {
+      display: flex; gap: 6px; justify-content: center; align-items: flex-end;
+      height: 50px; margin-bottom: 20px;
+    }
+    .dna-bar {
+      width: 6px; background: var(--red); border-radius: 3px;
+      animation: dnaAnim 1.2s ease-in-out infinite;
+    }
+    .dna-bar:nth-child(1) { animation-delay: 0s;    }
+    .dna-bar:nth-child(2) { animation-delay: 0.1s;  }
+    .dna-bar:nth-child(3) { animation-delay: 0.2s;  }
+    .dna-bar:nth-child(4) { animation-delay: 0.3s;  }
+    .dna-bar:nth-child(5) { animation-delay: 0.4s;  }
+    .dna-bar:nth-child(6) { animation-delay: 0.3s;  }
+    .dna-bar:nth-child(7) { animation-delay: 0.2s;  }
+    .dna-bar:nth-child(8) { animation-delay: 0.1s;  }
+    @keyframes dnaAnim {
+      0%,100% { height: 10px; opacity: 0.4; }
+      50%      { height: 45px; opacity: 1;   }
+    }
+    .loader-text { color: var(--muted); font-size: 0.9rem; }
+
+    /* ── Result Card ────────────────────────────────────────────── */
+    #resultSection { display: none; margin-top: 32px; }
+
+    .result-hero {
+      background: linear-gradient(135deg, rgba(230,57,70,0.12), rgba(6,214,160,0.05));
+      border: 1px solid rgba(230,57,70,0.3);
+      border-radius: 20px; padding: 36px;
+      text-align: center; position: relative; overflow: hidden;
+      margin-bottom: 24px;
+    }
+    .result-hero::before {
+      content: ''; position: absolute;
+      top: -50%; left: -50%; width: 200%; height: 200%;
+      background: conic-gradient(from 0deg, transparent 60%, rgba(230,57,70,0.05) 100%);
+      animation: spin 20s linear infinite; pointer-events: none;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .result-label {
+      font-size: 0.78rem; font-weight: 600; letter-spacing: 0.15em;
+      text-transform: uppercase; color: var(--muted); margin-bottom: 12px;
+    }
+    .result-group {
+      font-family: 'DM Serif Display', serif;
+      font-size: clamp(3.5rem, 10vw, 6rem);
+      line-height: 1; color: var(--red);
+      text-shadow: 0 0 60px var(--red-glow);
+      margin-bottom: 12px;
+    }
+    .result-conf {
+      display: inline-flex; align-items: center; gap: 6px;
+      background: rgba(6,214,160,0.1); border: 1px solid rgba(6,214,160,0.25);
+      border-radius: 30px; padding: 6px 16px;
+      font-size: 0.9rem; font-weight: 600; color: var(--teal);
+    }
+
+    /* ── Info Grid ──────────────────────────────────────────────── */
+    .info-grid {
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 16px; margin-bottom: 24px;
+    }
+    .info-card {
+      background: var(--bg3); border: 1px solid var(--border);
+      border-radius: 14px; padding: 20px;
+    }
+    .info-card .ic-label {
+      font-size: 0.72rem; font-weight: 600; letter-spacing: 0.1em;
+      text-transform: uppercase; color: var(--muted); margin-bottom: 8px;
+    }
+    .info-card .ic-value { font-weight: 600; font-size: 0.95rem; }
+
+    /* ── Probability Chart ──────────────────────────────────────── */
+    .prob-section h3 {
+      font-size: 0.9rem; font-weight: 600; letter-spacing: 0.08em;
+      text-transform: uppercase; color: var(--muted);
+      margin-bottom: 16px;
+    }
+    .prob-bar-row {
+      display: flex; align-items: center; gap: 12px; margin-bottom: 10px;
+    }
+    .prob-bg-label {
+      font-family: 'JetBrains Mono', monospace; font-size: 0.85rem;
+      font-weight: 600; width: 36px; text-align: right; flex-shrink: 0;
+    }
+    .prob-track {
+      flex: 1; height: 8px; background: var(--bg3); border-radius: 4px; overflow: hidden;
+    }
+    .prob-fill {
+      height: 100%; border-radius: 4px;
+      background: linear-gradient(90deg, var(--red), #ff6b6b);
+      transition: width 0.8s cubic-bezier(0.34, 1.56, 0.64, 1);
+      width: 0;
+    }
+    .prob-fill.top { background: linear-gradient(90deg, var(--red), var(--gold)); }
+    .prob-pct {
+      font-family: 'JetBrains Mono', monospace; font-size: 0.8rem;
+      color: var(--muted); width: 42px; flex-shrink: 0;
+    }
+
+    /* ── How it works ───────────────────────────────────────────── */
+    .how-section { margin: 60px 0; }
+    .section-title {
+      font-family: 'DM Serif Display', serif;
+      font-size: 2rem; text-align: center; margin-bottom: 8px;
+    }
+    .section-sub { text-align: center; color: var(--muted); margin-bottom: 48px; }
+
+    .steps-grid {
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 20px;
+    }
+    .step-card {
+      background: var(--bg2); border: 1px solid var(--border);
+      border-radius: 18px; padding: 28px 24px;
+      position: relative; overflow: hidden;
+      transition: transform 0.3s ease, border-color 0.3s ease;
+    }
+    .step-card:hover { transform: translateY(-4px); border-color: rgba(230,57,70,0.3); }
+    .step-num {
+      font-family: 'DM Serif Display', serif; font-size: 3rem;
+      color: rgba(230,57,70,0.15); line-height: 1;
+      position: absolute; top: 16px; right: 20px;
+    }
+    .step-icon { font-size: 2rem; margin-bottom: 16px; display: block; }
+    .step-card h4 { font-weight: 600; margin-bottom: 8px; }
+    .step-card p { font-size: 0.88rem; color: var(--muted); line-height: 1.6; }
+
+    /* ── Footer ─────────────────────────────────────────────────── */
+    footer {
+      border-top: 1px solid var(--border); padding: 32px 0; text-align: center;
+      color: var(--muted); font-size: 0.85rem; margin-top: 60px;
+    }
+    footer strong { color: var(--text); }
+
+    /* ── Alerts ─────────────────────────────────────────────────── */
+    .alert {
+      padding: 14px 18px; border-radius: 12px; margin-top: 16px;
+      font-size: 0.9rem; display: none;
+    }
+    .alert-error { background: rgba(230,57,70,0.1); border: 1px solid rgba(230,57,70,0.3); color: #ff9a9a; }
+    .alert-success { background: var(--teal-dim); border: 1px solid rgba(6,214,160,0.3); color: var(--teal); }
+
+    @media (max-width: 640px) {
+      .main-card { padding: 24px 20px; }
+      .tabs { flex-direction: column; }
+      .preview-wrap { flex-direction: column; text-align: center; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="bg-orbs">
+  <div class="orb orb-1"></div>
+  <div class="orb orb-2"></div>
+  <div class="orb orb-3"></div>
+</div>
+
+<!-- NAV -->
+<nav>
+  <div class="container nav-inner">
+    <div class="logo">
+      <div class="logo-dot"></div>
+      BloodPrint
+    </div>
+    <span class="nav-badge">AI Research Tool</span>
+  </div>
+</nav>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="container">
+    <div class="hero-tag">
+      <span>🔬</span> Deep Learning · Biometrics
+    </div>
+    <h1>Predict Blood Group<br>from <em>Fingerprint</em></h1>
+    <p>Upload or scan a fingerprint image and let the AI model analyze ridge patterns to predict the blood group.</p>
+  </div>
+</section>
+
+<!-- MAIN CONTENT -->
+<div class="container">
+
+  <!-- INPUT CARD -->
+  <div class="main-card">
+    <div class="tabs">
+      <button class="tab-btn active" id="tabUpload" onclick="switchTab('upload')">
+        📁 Upload Image
+      </button>
+      <button class="tab-btn" id="tabCamera" onclick="switchTab('camera')">
+        📷 Use Camera / Scanner
+      </button>
+    </div>
+
+    <!-- UPLOAD PANEL -->
+    <div id="uploadPanel">
+      <div class="upload-zone" id="dropZone">
+        <input type="file" id="fileInput" accept="image/*" onchange="handleFile(this.files[0])">
+        <span class="upload-icon">🖐️</span>
+        <h3>Drop fingerprint image here</h3>
+        <p>or click to browse your files</p>
+        <div class="formats">
+          <span class="format-tag">PNG</span>
+          <span class="format-tag">JPG</span>
+          <span class="format-tag">BMP</span>
+          <span class="format-tag">TIF</span>
+          <span class="format-tag">WEBP</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- CAMERA PANEL -->
+    <div id="cameraPanel" style="display:none;">
+      <div class="scanner-panel">
+        <div class="camera-container">
+          <video id="videoEl" autoplay playsinline></video>
+          <canvas id="canvasEl" style="display:none;"></canvas>
+          <div class="scan-overlay" id="scanOverlay" style="display:none;">
+            <div class="scan-frame">
+              <div class="scan-line"></div>
+            </div>
+          </div>
+        </div>
+        <div class="btn-row">
+          <button class="btn btn-red" onclick="startCamera()">▶ Start Camera</button>
+          <button class="btn btn-ghost" onclick="captureFrame()">📸 Capture</button>
+          <button class="btn btn-ghost" onclick="stopCamera()">⏹ Stop</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- PREVIEW -->
+    <div id="previewSection">
+      <div class="preview-wrap">
+        <img id="previewImg" src="" alt="Preview" />
+        <div class="preview-meta">
+          <div class="fname" id="previewName">fingerprint.png</div>
+          <div class="fmeta" id="previewMeta">—</div>
+          <div class="btn-row" style="justify-content:flex-start; margin-top:12px;">
+            <button class="btn btn-ghost" style="padding:8px 16px;font-size:0.85rem;" onclick="clearImage()">✕ Clear</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="alert alert-error" id="alertError"></div>
+
+    <div class="predict-row">
+      <button class="btn btn-red" id="predictBtn" onclick="predict()" disabled>
+        🔬 Analyse Fingerprint
+      </button>
+    </div>
+  </div>
+
+  <!-- LOADER -->
+  <div class="loader" id="loader">
+    <div class="dna-loader">
+      <div class="dna-bar"></div>
+      <div class="dna-bar"></div>
+      <div class="dna-bar"></div>
+      <div class="dna-bar"></div>
+      <div class="dna-bar"></div>
+      <div class="dna-bar"></div>
+      <div class="dna-bar"></div>
+      <div class="dna-bar"></div>
+    </div>
+    <div class="loader-text">Analysing fingerprint ridge patterns…</div>
+  </div>
+
+  <!-- RESULT -->
+  <div id="resultSection">
+    <div class="result-hero">
+      <div class="result-label">Predicted Blood Group</div>
+      <div class="result-group" id="resultGroup">—</div>
+      <div class="result-conf" id="resultConf">Confidence: —</div>
+    </div>
+
+    <div class="info-grid" id="infoGrid"></div>
+
+    <div class="prob-section main-card" style="padding:28px;">
+      <h3>All Blood Group Probabilities</h3>
+      <div id="probBars"></div>
+    </div>
+
+    <div style="text-align:center; margin-top:24px;">
+      <button class="btn btn-ghost" onclick="resetAll()">⟳ New Prediction</button>
+    </div>
+  </div>
+
+  <!-- HOW IT WORKS -->
+  <section class="how-section">
+    <h2 class="section-title">How It Works</h2>
+    <p class="section-sub">Four steps from fingerprint to blood group</p>
+    <div class="steps-grid">
+      <div class="step-card">
+        <span class="step-num">01</span>
+        <span class="step-icon">🖐️</span>
+        <h4>Capture Fingerprint</h4>
+        <p>Upload a scanned image or capture one live using your device camera or USB scanner.</p>
+      </div>
+      <div class="step-card">
+        <span class="step-num">02</span>
+        <span class="step-icon">🔍</span>
+        <h4>Ridge Analysis</h4>
+        <p>The CNN model extracts minutiae patterns — loops, whorls, and arches — from the ridge structure.</p>
+      </div>
+      <div class="step-card">
+        <span class="step-num">03</span>
+        <span class="step-icon">🧠</span>
+        <h4>Deep Classification</h4>
+        <p>MobileNetV2-based neural network classifies patterns across 8 blood groups with softmax probabilities.</p>
+      </div>
+      <div class="step-card">
+        <span class="step-num">04</span>
+        <span class="step-icon">🩸</span>
+        <h4>Result + Insights</h4>
+        <p>Displays predicted blood group, confidence score, donation compatibility, and probability breakdown.</p>
+      </div>
+    </div>
+  </section>
+
+</div>
+
+<!-- FOOTER -->
+<footer>
+  <div class="container">
+    <strong>BloodPrint</strong> — For research purposes only. Not a substitute for clinical blood typing. <br>
+    Built with TensorFlow · Flask · Vanilla JS
+  </div>
+</footer>
+
+<script>
+  // ── CONFIG ──────────────────────────────────────────────────────────────────
+  // Change this URL to your Flask backend address
+  const API_URL = 'http://localhost:5000/predict';
+
+  let selectedFile = null;
+  let videoStream  = null;
+
+  // ── TABS ────────────────────────────────────────────────────────────────────
+  function switchTab(tab) {
+    document.getElementById('tabUpload').classList.toggle('active', tab === 'upload');
+    document.getElementById('tabCamera').classList.toggle('active', tab === 'camera');
+    document.getElementById('uploadPanel').style.display = tab === 'upload' ? '' : 'none';
+    document.getElementById('cameraPanel').style.display = tab === 'camera' ? '' : 'none';
+    if (tab !== 'camera') stopCamera();
+  }
+
+  // ── DRAG AND DROP ────────────────────────────────────────────────────────────
+  const dz = document.getElementById('dropZone');
+  ['dragenter','dragover'].forEach(e => dz.addEventListener(e, ev => { ev.preventDefault(); dz.classList.add('drag-over'); }));
+  ['dragleave','drop'].forEach(e => dz.addEventListener(e, ev => { ev.preventDefault(); dz.classList.remove('drag-over'); }));
+  dz.addEventListener('drop', ev => {
+    const f = ev.dataTransfer.files[0];
+    if (f) handleFile(f);
+  });
+
+  // ── FILE HANDLING ────────────────────────────────────────────────────────────
+  function handleFile(file) {
+    if (!file || !file.type.startsWith('image/')) {
+      showError('Please select a valid image file.');
+      return;
+    }
+    selectedFile = file;
+    const reader = new FileReader();
+    reader.onload = e => {
+      document.getElementById('previewImg').src = e.target.result;
+      document.getElementById('previewName').textContent = file.name;
+      document.getElementById('previewMeta').textContent =
+        `${(file.size / 1024).toFixed(1)} KB · ${file.type}`;
+      document.getElementById('previewSection').style.display = 'block';
+      document.getElementById('predictBtn').disabled = false;
+      hideError();
+    };
+    reader.readAsDataURL(file);
+  }
+
+  function clearImage() {
+    selectedFile = null;
+    document.getElementById('previewSection').style.display = 'none';
+    document.getElementById('predictBtn').disabled = true;
+    document.getElementById('fileInput').value = '';
+    hideResult();
+  }
+
+  // ── CAMERA ───────────────────────────────────────────────────────────────────
+  async function startCamera() {
+    try {
+      videoStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+      const vid = document.getElementById('videoEl');
+      vid.srcObject = videoStream;
+      document.getElementById('scanOverlay').style.display = 'flex';
+    } catch(e) {
+      showError('Camera access denied or not available: ' + e.message);
+    }
+  }
+
+  function captureFrame() {
+    const vid = document.getElementById('videoEl');
+    const canvas = document.getElementById('canvasEl');
+    if (!videoStream) { showError('Start the camera first.'); return; }
+    canvas.width  = vid.videoWidth;
+    canvas.height = vid.videoHeight;
+    canvas.getContext('2d').drawImage(vid, 0, 0);
+    canvas.toBlob(blob => {
+      const file = new File([blob], 'capture.png', { type: 'image/png' });
+      handleFile(file);
+      stopCamera();
+      switchTab('upload');
+    }, 'image/png');
+  }
+
+  function stopCamera() {
+    if (videoStream) {
+      videoStream.getTracks().forEach(t => t.stop());
+      videoStream = null;
+    }
+    document.getElementById('scanOverlay').style.display = 'none';
+    const vid = document.getElementById('videoEl');
+    vid.srcObject = null;
+  }
+
+  // ── PREDICTION ───────────────────────────────────────────────────────────────
+  async function predict() {
+    if (!selectedFile) return;
+
+    showLoader();
+    hideResult();
+    hideError();
+
+    const form = new FormData();
+    form.append('image', selectedFile);
+
+    try {
+      const res  = await fetch(API_URL, { method: 'POST', body: form });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Server error');
+      showResult(data);
+    } catch(e) {
+      showError('⚠️ ' + e.message + ' — Make sure the Flask backend is running on ' + API_URL);
+    } finally {
+      hideLoader();
+    }
+  }
+
+  // ── RESULT RENDERING ─────────────────────────────────────────────────────────
+  function showResult(data) {
+    document.getElementById('resultGroup').textContent = data.blood_group;
+    document.getElementById('resultConf').textContent  = `✓ Confidence: ${data.confidence.toFixed(1)}%`;
+
+    // Info cards
+    const info = data.info || {};
+    const grid = document.getElementById('infoGrid');
+    grid.innerHTML = `
+      <div class="info-card">
+        <div class="ic-label">🩸 Can Donate To</div>
+        <div class="ic-value">${info.donate || '—'}</div>
+      </div>
+      <div class="info-card">
+        <div class="ic-label">💉 Can Receive From</div>
+        <div class="ic-value">${info.receive || '—'}</div>
+      </div>
+      <div class="info-card">
+        <div class="ic-label">👥 Population %</div>
+        <div class="ic-value">${info.population || '—'}</div>
+      </div>
+    `;
+
+    // Probability bars
+    const bars = document.getElementById('probBars');
+    bars.innerHTML = '';
+    (data.all_probabilities || []).forEach((item, i) => {
+      const row = document.createElement('div');
+      row.className = 'prob-bar-row';
+      row.innerHTML = `
+        <div class="prob-bg-label">${item.blood_group}</div>
+        <div class="prob-track">
+          <div class="prob-fill ${i === 0 ? 'top' : ''}" data-pct="${item.confidence}"></div>
+        </div>
+        <div class="prob-pct">${item.confidence.toFixed(1)}%</div>
+      `;
+      bars.appendChild(row);
+    });
+
+    document.getElementById('resultSection').style.display = 'block';
+    document.getElementById('resultSection').scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+    // Animate bars
+    setTimeout(() => {
+      document.querySelectorAll('.prob-fill').forEach(el => {
+        el.style.width = el.dataset.pct + '%';
+      });
+    }, 100);
+  }
+
+  // ── HELPERS ──────────────────────────────────────────────────────────────────
+  function showLoader()  { document.getElementById('loader').style.display = 'block'; }
+  function hideLoader()  { document.getElementById('loader').style.display = 'none';  }
+  function hideResult()  { document.getElementById('resultSection').style.display = 'none'; }
+  function showError(msg){ const el = document.getElementById('alertError'); el.textContent = msg; el.style.display = 'block'; }
+  function hideError()   { document.getElementById('alertError').style.display = 'none'; }
+
+  function resetAll() {
+    clearImage();
+    hideResult();
+    hideError();
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+</script>
+</body>
+</html>

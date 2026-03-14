@@ -1,0 +1,49 @@
+# ── Virtual Environment ───────────────────────────────────────
+venv/
+.venv/
+env/
+ENV/
+
+# ── Dataset (too large for GitHub) ───────────────────────────
+dataset/
+
+# ── Trained Model Files (too large for GitHub) ───────────────
+model_output/
+
+# ── Python Cache ──────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+
+# ── Jupyter Notebook Checkpoints ─────────────────────────────
+.ipynb_checkpoints/
+*/.ipynb_checkpoints/
+
+# ── TensorFlow / Keras Logs ───────────────────────────────────
+logs/
+*.h5
+*.keras
+*.pb
+saved_model/
+
+# ── OS Files ──────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ── IDE / Editor ──────────────────────────────────────────────
+.vscode/settings.json
+.idea/
+*.swp
+*.swo
+
+# ── Environment Variables ─────────────────────────────────────
+.env
+.env.local
+
+# ── Pip ───────────────────────────────────────────────────────
+*.egg-info/
+dist/
+build/
